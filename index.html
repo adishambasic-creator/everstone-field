@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#16130F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EverStone">
+<link rel="manifest" href="manifest.json">
+<title>EverStone Field</title>
+<style>
+  :root{
+    --ink:#16130F; --ink2:#2A251E; --gold:#C2A15A; --gold-deep:#9A7C3E;
+    --paper:#F6F4EF; --card:#FFFFFF; --line:#E6E2D9; --muted:#6F6A60;
+    --text:#211D17; --green:#2E7D52; --red:#C0392B; --amber:#C9820A; --slate:#5B6B7A;
+    --shadow:0 1px 2px rgba(0,0,0,.05),0 6px 18px rgba(0,0,0,.06);
+    --radius:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
+  body{padding-bottom:env(safe-area-inset-bottom)}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  input,select,textarea{font-family:inherit;font-size:16px}
+  .hidden{display:none!important}
+
+  /* ---------- AUTH ---------- */
+  #auth{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;
+    align-items:center;padding:28px;background:
+      radial-gradient(120% 80% at 50% 0%, #221C14 0%, var(--ink) 55%, #0D0B08 100%)}
+  .brand{text-align:center;margin-bottom:34px}
+  .brand .mark{font-size:13px;letter-spacing:.42em;color:var(--gold);font-weight:600;
+    text-transform:uppercase;margin-bottom:10px}
+  .brand h1{margin:0;color:#F4EFE4;font-size:30px;font-weight:700;letter-spacing:-.01em}
+  .brand .sub{color:#A59C8B;font-size:13px;margin-top:6px;letter-spacing:.02em}
+  .authcard{width:100%;max-width:380px;background:var(--card);border-radius:18px;
+    padding:24px 22px 22px;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);
+    margin-bottom:6px;letter-spacing:.02em}
+  .field input{width:100%;padding:13px 14px;border:1.5px solid var(--line);
+    border-radius:11px;background:#FCFBF8;color:var(--text);transition:border-color .15s}
+  .field input:focus{outline:none;border-color:var(--gold)}
+  .btn{display:block;width:100%;padding:14px;border-radius:11px;font-size:15px;
+    font-weight:650;transition:transform .05s,opacity .15s}
+  .btn:active{transform:scale(.985)}
+  .btn-gold{background:linear-gradient(180deg,#CBA85E,var(--gold-deep));color:#1A140A;
+    box-shadow:0 4px 14px rgba(154,124,62,.35)}
+  .btn-ghost{background:transparent;color:var(--muted);font-weight:600;font-size:13.5px;
+    padding:10px;margin-top:6px}
+  .authmsg{font-size:13px;text-align:center;margin-top:12px;min-height:18px;color:var(--red)}
+  .authmsg.ok{color:var(--green)}
+
+  /* ---------- APP CHROME ---------- */
+  #app{min-height:100dvh;display:flex;flex-direction:column}
+  .topbar{position:sticky;top:0;z-index:40;background:var(--ink);
+    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
+    display:flex;align-items:center;gap:12px}
+  .topbar .back{color:var(--gold);font-size:22px;line-height:1;width:26px;flex:0 0 auto}
+  .topbar .ttl{flex:1;min-width:0}
+  .topbar .ttl .k{font-size:10px;letter-spacing:.34em;color:var(--gold);
+    text-transform:uppercase;font-weight:600}
+  .topbar .ttl .v{color:#F4EFE4;font-size:17px;font-weight:700;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .topbar .act{color:#B9B0A0;font-size:12.5px;font-weight:600;padding:6px 4px;flex:0 0 auto}
+
+  .content{flex:1;padding:16px 16px 90px;max-width:680px;width:100%;margin:0 auto}
+
+  /* section tabs */
+  .tabs{display:flex;gap:7px;overflow-x:auto;padding:12px 16px;background:var(--ink2);
+    position:sticky;top:0;z-index:30;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;padding:8px 14px;border-radius:20px;font-size:13px;font-weight:600;
+    color:#B6AC9A;background:rgba(255,255,255,.06)}
+  .tab.on{color:#1A140A;background:var(--gold)}
+
+  /* ---------- CARDS / LISTS ---------- */
+  .sec-h{display:flex;align-items:center;justify-content:space-between;margin:4px 2px 14px}
+  .sec-h h2{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em}
+  .add{display:inline-flex;align-items:center;gap:5px;background:var(--ink);color:var(--gold);
+    font-size:13px;font-weight:650;padding:8px 13px;border-radius:10px}
+  .add:active{opacity:.85}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:15px;margin-bottom:11px;box-shadow:var(--shadow)}
+  .card .row1{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .card .name{font-size:16px;font-weight:650;letter-spacing:-.005em}
+  .card .sub{color:var(--muted);font-size:13.5px;margin-top:3px;line-height:1.4}
+  .amt{font-size:16px;font-weight:700;white-space:nowrap}
+
+  .home-card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:0;margin-bottom:13px;box-shadow:var(--shadow);overflow:hidden;
+    display:flex;align-items:stretch}
+  .home-card .stripe{width:6px;background:var(--gold)}
+  .home-card .body{padding:16px;flex:1;min-width:0}
+  .home-card .name{font-size:17px;font-weight:700}
+  .home-card .addr{color:var(--muted);font-size:13.5px;margin-top:3px}
+  .home-card .chev{align-self:center;color:#C9C2B4;font-size:22px;padding:0 14px}
+
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;
+    letter-spacing:.02em;text-transform:uppercase}
+  .pill.green{background:#E4F2EA;color:var(--green)}
+  .pill.red{background:#FBE7E4;color:var(--red)}
+  .pill.amber{background:#FBF0DD;color:#9C6206}
+  .pill.slate{background:#E8ECEF;color:var(--slate)}
+  .pill.gold{background:#F4ECD8;color:var(--gold-deep)}
+
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px;align-items:center}
+
+  .empty{text-align:center;color:var(--muted);padding:48px 24px}
+  .empty .ic{font-size:34px;margin-bottom:10px;opacity:.5}
+  .empty p{margin:0 0 4px;font-weight:600;color:var(--text)}
+  .empty span{font-size:13.5px}
+
+  .summary{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:18px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;
+    box-shadow:var(--shadow)}
+  .stat .lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+    font-weight:650}
+  .stat .num{font-size:23px;font-weight:750;margin-top:4px;letter-spacing:-.02em}
+  .stat .num.sm{font-size:18px}
+
+  /* photos grid */
+  .pgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .photo{position:relative;border-radius:13px;overflow:hidden;background:#E9E5DC;
+    aspect-ratio:1/1;box-shadow:var(--shadow)}
+  .photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .photo .tagchip{position:absolute;top:8px;left:8px}
+  .photo .del{position:absolute;top:7px;right:7px;width:26px;height:26px;border-radius:50%;
+    background:rgba(0,0,0,.55);color:#fff;font-size:15px;display:flex;align-items:center;
+    justify-content:center}
+  .photo .note{position:absolute;bottom:0;left:0;right:0;padding:16px 9px 7px;color:#fff;
+    font-size:12px;font-weight:500;background:linear-gradient(transparent,rgba(0,0,0,.75))}
+
+  .iconbtn{padding:7px 9px;border-radius:9px;font-size:13px;font-weight:600;color:var(--muted)}
+  .iconbtn.del{color:var(--red)}
+  .check{width:24px;height:24px;border-radius:7px;border:2px solid var(--line);flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff}
+  .check.on{background:var(--green);border-color:var(--green)}
+
+  /* ---------- MODAL ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(20,16,11,.5);z-index:90;display:flex;
+    align-items:flex-end;justify-content:center;backdrop-filter:blur(2px)}
+  .sheet{background:var(--paper);width:100%;max-width:560px;border-radius:20px 20px 0 0;
+    padding:8px 20px calc(env(safe-area-inset-bottom) + 22px);max-height:92dvh;overflow-y:auto;
+    animation:rise .22s ease}
+  @keyframes rise{from{transform:translateY(30px);opacity:.4}to{transform:translateY(0);opacity:1}}
+  .grab{width:38px;height:4px;background:#D5CFC2;border-radius:3px;margin:8px auto 14px}
+  .sheet h3{margin:0 0 16px;font-size:19px;font-weight:700}
+  .sheet .field input,.sheet .field select,.sheet .field textarea{width:100%;padding:12px 13px;
+    border:1.5px solid var(--line);border-radius:11px;background:var(--card);color:var(--text)}
+  .sheet .field textarea{min-height:64px;resize:vertical}
+  .sheet .field input:focus,.sheet .field select:focus,.sheet .field textarea:focus{
+    outline:none;border-color:var(--gold)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .tagrow{display:flex;gap:8px;flex-wrap:wrap}
+  .tagopt{padding:9px 14px;border-radius:11px;border:1.5px solid var(--line);font-size:13.5px;
+    font-weight:600;color:var(--muted);background:var(--card)}
+  .tagopt.on{color:#fff;border-color:transparent}
+  .tagopt.on[data-c=red]{background:var(--red)} .tagopt.on[data-c=amber]{background:var(--amber)}
+  .tagopt.on[data-c=slate]{background:var(--slate)}
+  .sheet .btn{margin-top:8px}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(60px);
+    background:var(--ink);color:#F4EFE4;padding:12px 20px;border-radius:12px;font-size:14px;
+    font-weight:600;z-index:120;opacity:0;transition:.25s;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  .spinner{width:30px;height:30px;border:3px solid var(--line);border-top-color:var(--gold);
+    border-radius:50%;animation:spin .7s linear infinite;margin:40px auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="auth">
+  <div class="brand">
+    <div class="mark">EverStone Homes</div>
+    <h1>Field</h1>
+    <div class="sub">Build tracking, in your pocket</div>
+  </div>
+  <div class="authcard">
+    <div class="field">
+      <label>Email</label>
+      <input id="email" type="email" autocomplete="email" inputmode="email" placeholder="you@everstoneiowa.com">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="pass" type="password" autocomplete="current-password" placeholder="••••••••">
+    </div>
+    <button class="btn btn-gold" id="signinBtn">Sign in</button>
+    <button class="btn btn-ghost" id="signupBtn">Create my account</button>
+    <div class="authmsg" id="authmsg"></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <div class="topbar">
+    <button class="back hidden" id="backBtn">‹</button>
+    <div class="ttl"><div class="k" id="topK">Your Homes</div><div class="v" id="topV">EverStone Field</div></div>
+    <button class="act" id="logoutBtn">Sign out</button>
+  </div>
+  <div class="tabs hidden" id="tabs"></div>
+  <div class="content" id="content"></div>
+</div>
+
+<div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============================================================
+   CONFIG — paste your two Supabase values here (see SETUP.md)
+   ============================================================ */
+const SUPABASE_URL  = "https://snnatpcpefztznbgpyqg.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNubmF0cGNwZWZ6dHpuYmdweXFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjA4MDgsImV4cCI6MjA5NzAzNjgwOH0.huMJWGG9xQIom5-O-NPWqH_xjd5X_nfqSvkyA5st0cQ";
+/* ============================================================ */
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const SECTIONS = ["Overview","Expenses","Contractors","Schedule","Photos","Invoices"];
+let state = { user:null, home:null, section:"Overview" };
+
+const $ = id => document.getElementById(id);
+const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const money = n => "$" + (Number(n)||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const fdate = d => d ? new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "";
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1900);}
+
+/* ---------- AUTH ---------- */
+function authMsg(m,ok){const e=$("authmsg");e.textContent=m;e.classList.toggle("ok",!!ok);}
+
+async function signIn(){
+  const email=$("email").value.trim(), password=$("pass").value;
+  if(!email||!password){authMsg("Enter your email and password.");return;}
+  authMsg("Signing in…",true);
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(error){authMsg(error.message);} else {authMsg("");}
+}
+async function signUp(){
+  const email=$("email").value.trim(), password=$("pass").value;
+  if(!email||!password){authMsg("Enter an email and a password (6+ characters).");return;}
+  authMsg("Creating your account…",true);
+  const {data,error}=await sb.auth.signUp({email,password});
+  if(error){authMsg(error.message);}
+  else if(data.session){authMsg("");}
+  else {authMsg("Account made. Check your email to confirm, then sign in.",true);}
+}
+$("signinBtn").onclick=signIn;
+$("signupBtn").onclick=signUp;
+$("pass").addEventListener("keydown",e=>{if(e.key==="Enter")signIn();});
+$("logoutBtn").onclick=async()=>{await sb.auth.signOut();};
+
+sb.auth.onAuthStateChange((_e,session)=>{
+  state.user = session?.user || null;
+  if(state.user){ $("auth").classList.add("hidden"); $("app").classList.remove("hidden"); openHomes(); }
+  else { $("app").classList.add("hidden"); $("auth").classList.remove("hidden"); $("pass").value=""; }
+});
+
+/* ---------- NAV ---------- */
+$("backBtn").onclick=openHomes;
+function setTop(k,v,back){ $("topK").textContent=k; $("topV").textContent=v;
+  $("backBtn").classList.toggle("hidden",!back); }
+
+function openHomes(){
+  state.home=null;
+  setTop("Your Homes","EverStone Field",false);
+  $("tabs").classList.add("hidden");
+  renderHomes();
+}
+function openHome(home){
+  state.home=home; state.section="Overview";
+  setTop("Project",home.name,true);
+  renderTabs(); renderSection();
+}
+function renderTabs(){
+  const t=$("tabs"); t.classList.remove("hidden");
+  t.innerHTML=SECTIONS.map(s=>`<button class="tab ${s===state.section?'on':''}" data-s="${s}">${s}</button>`).join("");
+  t.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{state.section=b.dataset.s;renderTabs();renderSection();});
+}
+
+/* ---------- DATA ---------- */
+async function getRows(table,extra){
+  let q=sb.from(table).select("*").eq("home_id",state.home.id);
+  if(extra) q=extra(q);
+  const {data,error}=await q;
+  if(error){toast("Load error: "+error.message);return[];}
+  return data||[];
+}
+function loading(){ $("content").innerHTML='<div class="spinner"></div>'; }
+
+/* ============ HOMES LIST ============ */
+async function renderHomes(){
+  loading();
+  const {data,error}=await sb.from("homes").select("*").order("created_at",{ascending:false});
+  if(error){$("content").innerHTML=`<div class="empty"><p>Couldn't load.</p><span>${esc(error.message)}</span></div>`;return;}
+  let html=`<div class="sec-h"><h2>Homes</h2><button class="add" onclick="homeForm()">＋ New home</button></div>`;
+  if(!data.length){
+    html+=`<div class="empty"><div class="ic">🏠</div><p>No homes yet</p><span>Add your first build to start tracking it.</span></div>`;
+  } else {
+    html+=data.map(h=>`
+      <div class="home-card" onclick='openHome(${JSON.stringify(h).replace(/'/g,"&#39;")})'>
+        <div class="stripe"></div>
+        <div class="body">
+          <div class="name">${esc(h.name)}</div>
+          ${h.address?`<div class="addr">${esc(h.address)}</div>`:""}
+          <div class="meta">
+            <span class="pill gold">${esc(h.status||"Planning")}</span>
+            ${h.plan?`<span class="card sub" style="padding:0;border:0;box-shadow:none;margin:0">${esc(h.plan)}</span>`:""}
+          </div>
+        </div>
+        <div class="chev">›</div>
+      </div>`).join("");
+  }
+  $("content").innerHTML=html;
+}
+
+/* ============ SECTION ROUTER ============ */
+function renderSection(){
+  const s=state.section;
+  if(s==="Overview")    return renderOverview();
+  if(s==="Expenses")    return renderExpenses();
+  if(s==="Contractors") return renderContractors();
+  if(s==="Schedule")    return renderSchedule();
+  if(s==="Photos")      return renderPhotos();
+  if(s==="Invoices")    return renderInvoices();
+}
+
+/* ---------- OVERVIEW ---------- */
+async function renderOverview(){
+  loading();
+  const [exp,inv,sch,pho,con]=await Promise.all([
+    getRows("expenses"),getRows("invoices"),getRows("schedule"),getRows("photos"),getRows("contractors")
+  ]);
+  const spent=exp.reduce((a,e)=>a+Number(e.amount||0),0);
+  const owed=inv.filter(i=>!i.paid).reduce((a,i)=>a+Number(i.amount||0),0);
+  const unpaidCt=inv.filter(i=>!i.paid).length;
+  const fixes=pho.filter(p=>p.tag==="Needs Fixed").length;
+  const upcoming=sch.filter(s=>s.status!=="Done").length;
+  const h=state.home;
+  $("content").innerHTML=`
+    <div class="card" style="margin-bottom:18px">
+      <div class="row1"><div class="name">${esc(h.name)}</div>
+        <button class="iconbtn" onclick='homeForm(${JSON.stringify(h).replace(/'/g,"&#39;")})'>Edit</button></div>
+      ${h.address?`<div class="sub">${esc(h.address)}</div>`:""}
+      <div class="meta"><span class="pill gold">${esc(h.status||"Planning")}</span>
+        ${h.plan?`<span class="sub" style="margin:0">${esc(h.plan)}</span>`:""}</div>
+    </div>
+    <div class="summary">
+      <div class="stat"><div class="lbl">Total spent</div><div class="num">${money(spent)}</div></div>
+      <div class="stat"><div class="lbl">Outstanding</div><div class="num ${owed>0?'':''}" style="color:${owed>0?'var(--red)':'var(--green)'}">${money(owed)}</div></div>
+      <div class="stat"><div class="lbl">Unpaid invoices</div><div class="num sm">${unpaidCt}</div></div>
+      <div class="stat"><div class="lbl">Needs fixed</div><div class="num sm" style="color:${fixes>0?'var(--red)':'inherit'}">${fixes}</div></div>
+      <div class="stat"><div class="lbl">Open schedule</div><div class="num sm">${upcoming}</div></div>
+      <div class="stat"><div class="lbl">Contractors</div><div class="num sm">${con.length}</div></div>
+    </div>
+    <button class="btn btn-gold" style="max-width:none" onclick="state.section='Expenses';renderTabs();renderSection()">Jump to expenses</button>
+  `;
+}
+
+/* ---------- EXPENSES ---------- */
+async function renderExpenses(){
+  loading();
+  const rows=await getRows("expenses",q=>q.order("expense_date",{ascending:false,nullsFirst:false}));
+  const total=rows.reduce((a,e)=>a+Number(e.amount||0),0);
+  let html=`<div class="sec-h"><h2>Expenses</h2><button class="add" onclick="expenseForm()">＋ Add</button></div>`;
+  html+=`<div class="stat" style="margin-bottom:14px"><div class="lbl">Total spent</div><div class="num">${money(total)}</div></div>`;
+  if(!rows.length) html+=emptyBox("🧾","No expenses logged","Track materials, permits, labor and more.");
+  else html+=rows.map(e=>`
+    <div class="card"><div class="row1">
+      <div style="min-width:0"><div class="name">${esc(e.description)}</div>
+        <div class="sub">${e.category?esc(e.category)+" · ":""}${fdate(e.expense_date)}</div>
+        <div class="meta"><span class="pill ${e.paid?'green':'red'}">${e.paid?'Paid':'Unpaid'}</span></div></div>
+      <div style="text-align:right"><div class="amt">${money(e.amount)}</div>
+        <button class="iconbtn" onclick='expenseForm(${j(e)})'>Edit</button></div>
+    </div></div>`).join("");
+  $("content").innerHTML=html;
+}
+
+/* ---------- CONTRACTORS ---------- */
+async function renderContractors(){
+  loading();
+  const rows=await getRows("contractors",q=>q.order("name"));
+  let html=`<div class="sec-h"><h2>Contractors</h2><button class="add" onclick="contractorForm()">＋ Add</button></div>`;
+  if(!rows.length) html+=emptyBox("👷","No contractors yet","Add the crews working on this home.");
+  else html+=rows.map(c=>`
+    <div class="card"><div class="row1">
+      <div style="min-width:0"><div class="name">${esc(c.name)}</div>
+        ${c.trade?`<div class="sub">${esc(c.trade)}</div>`:""}
+        ${c.notes?`<div class="sub">${esc(c.notes)}</div>`:""}</div>
+      <button class="iconbtn" onclick='contractorForm(${j(c)})'>Edit</button>
+    </div>
+    ${(c.phone||c.email)?`<div class="meta">
+      ${c.phone?`<a class="pill slate" style="text-decoration:none" href="tel:${esc(c.phone)}">📞 ${esc(c.phone)}</a>`:""}
+      ${c.email?`<a class="pill slate" style="text-decoration:none" href="mailto:${esc(c.email)}">✉ Email</a>`:""}
+    </div>`:""}</div>`).join("");
+  $("content").innerHTML=html;
+}
+
+/* ---------- SCHEDULE ---------- */
+async function renderSchedule(){
+  loading();
+  const rows=await getRows("schedule",q=>q.order("scheduled_date",{ascending:true,nullsFirst:false}));
+  let html=`<div class="sec-h"><h2>Schedule</h2><button class="add" onclick="scheduleForm()">＋ Add</button></div>`;
+  if(!rows.length) html+=emptyBox("📅","Nothing scheduled","Add contractor visits and milestones.");
+  else html+=rows.map(s=>{
+    const cls=s.status==="Done"?"green":s.status==="In progress"?"amber":"slate";
+    return `<div class="card"><div class="row1">
+      <div style="min-width:0"><div class="name">${esc(s.task)}</div>
+        <div class="sub">${s.contractor_name?esc(s.contractor_name)+" · ":""}${fdate(s.scheduled_date)||"No date"}</div>
+        <div class="meta"><span class="pill ${cls}">${esc(s.status)}</span></div></div>
+      <button class="iconbtn" onclick='scheduleForm(${j(s)})'>Edit</button>
+    </div></div>`;}).join("");
+  $("content").innerHTML=html;
+}
+
+/* ---------- INVOICES ---------- */
+async function renderInvoices(){
+  loading();
+  const rows=await getRows("invoices",q=>q.order("due_date",{ascending:true,nullsFirst:false}));
+  const owed=rows.filter(i=>!i.paid).reduce((a,i)=>a+Number(i.amount||0),0);
+  let html=`<div class="sec-h"><h2>Invoices</h2><button class="add" onclick="invoiceForm()">＋ Add</button></div>`;
+  html+=`<div class="stat" style="margin-bottom:14px"><div class="lbl">Outstanding</div>
+    <div class="num" style="color:${owed>0?'var(--red)':'var(--green)'}">${money(owed)}</div></div>`;
+  if(!rows.length) html+=emptyBox("💵","No invoices yet","Track what's billed and what's paid.");
+  else html+=rows.map(i=>`
+    <div class="card"><div class="row1">
+      <div style="display:flex;gap:12px;min-width:0">
+        <button class="check ${i.paid?'on':''}" onclick="togglePaid('${i.id}',${!i.paid})">${i.paid?'✓':''}</button>
+        <div style="min-width:0"><div class="name">${esc(i.contractor_name||"Invoice")}</div>
+          <div class="sub">${i.invoice_number?"#"+esc(i.invoice_number)+" · ":""}${i.due_date?"Due "+fdate(i.due_date):""}</div>
+          <div class="meta"><span class="pill ${i.paid?'green':'red'}">${i.paid?'Paid '+(i.paid_date?fdate(i.paid_date):''):'Unpaid'}</span></div></div>
+      </div>
+      <div style="text-align:right"><div class="amt">${money(i.amount)}</div>
+        <button class="iconbtn" onclick='invoiceForm(${j(i)})'>Edit</button></div>
+    </div></div>`).join("");
+  $("content").innerHTML=html;
+}
+async function togglePaid(id,paid){
+  const patch={paid};patch.paid_date=paid?new Date().toISOString().slice(0,10):null;
+  const {error}=await sb.from("invoices").update(patch).eq("id",id);
+  if(error)toast(error.message);else{toast(paid?"Marked paid":"Marked unpaid");renderInvoices();}
+}
+
+/* ---------- PHOTOS ---------- */
+const TAGS=[["Needs Fixed","red"],["Look Out","amber"],["Other","slate"]];
+function tagCls(t){const m={"Needs Fixed":"red","Look Out":"amber","Other":"slate"};return m[t]||"slate";}
+async function renderPhotos(){
+  loading();
+  const rows=await getRows("photos",q=>q.order("created_at",{ascending:false}));
+  let html=`<div class="sec-h"><h2>Photos</h2><label class="add" for="photoInput">＋ Add photo</label></div>
+    <input id="photoInput" type="file" accept="image/*" capture="environment" class="hidden">`;
+  if(!rows.length) html+=emptyBox("📷","No photos yet","Snap jobsite shots and tag what needs attention.");
+  else html+=`<div class="pgrid" id="pgrid">`+rows.map(p=>`
+    <div class="photo" data-path="${esc(p.storage_path)}" id="ph_${p.id}">
+      <span class="tagchip pill ${tagCls(p.tag)}">${esc(p.tag)}</span>
+      <button class="del" onclick="delPhoto('${p.id}','${esc(p.storage_path)}')">✕</button>
+      ${p.note?`<div class="note">${esc(p.note)}</div>`:""}
+    </div>`).join("")+`</div>`;
+  $("content").innerHTML=html;
+  $("photoInput").onchange=onPhotoPick;
+  rows.forEach(p=>signImg(p.id,p.storage_path)); // load thumbnails
+}
+async function signImg(id,path){
+  const {data}=await sb.storage.from("home-photos").createSignedUrl(path,3600);
+  const el=$("ph_"+id);if(el&&data?.signedUrl){const img=new Image();img.src=data.signedUrl;
+    el.insertBefore(img,el.firstChild);}
+}
+let pendingFile=null;
+function onPhotoPick(e){
+  const f=e.target.files[0]; if(!f)return; pendingFile=f; photoTagSheet();
+}
+async function uploadPhoto(tag,note){
+  const f=pendingFile; if(!f)return; closeModal();
+  toast("Uploading…");
+  const ext=(f.name.split(".").pop()||"jpg").toLowerCase();
+  const path=`${state.user.id}/${state.home.id}/${Date.now()}.${ext}`;
+  const {error:upErr}=await sb.storage.from("home-photos").upload(path,f,{contentType:f.type});
+  if(upErr){toast(upErr.message);return;}
+  const {error}=await sb.from("photos").insert({home_id:state.home.id,storage_path:path,tag,note:note||null});
+  if(error){toast(error.message);return;}
+  pendingFile=null; toast("Photo added"); renderPhotos();
+}
+async function delPhoto(id,path){
+  if(!confirm("Delete this photo?"))return;
+  await sb.storage.from("home-photos").remove([path]);
+  const {error}=await sb.from("photos").delete().eq("id",id);
+  if(error)toast(error.message);else{toast("Deleted");renderPhotos();}
+}
+
+/* ============ MODALS / FORMS ============ */
+function j(o){return JSON.stringify(o).replace(/'/g,"&#39;").replace(/"/g,"&quot;");}
+function openSheet(html){
+  $("modalRoot").innerHTML=`<div class="scrim" onclick="if(event.target===this)closeModal()">
+    <div class="sheet"><div class="grab"></div>${html}</div></div>`;
+}
+function closeModal(){$("modalRoot").innerHTML="";}
+function val(id){return ($(id).value||"").trim();}
+
+async function save(table,id,obj,after){
+  let res; if(id) res=await sb.from(table).update(obj).eq("id",id);
+  else res=await sb.from(table).insert({...obj,home_id:state.home?state.home.id:null});
+  if(res.error){toast(res.error.message);return;}
+  closeModal();toast("Saved");after();
+}
+async function del(table,id,after){
+  if(!confirm("Delete this?"))return;
+  const {error}=await sb.from(table).delete().eq("id",id);
+  if(error)toast(error.message);else{closeModal();toast("Deleted");after();}
+}
+function delRow(table,id,after){ // for buttons inside sheets
+  return `<button class="btn" style="color:var(--red);background:#FBE7E4;margin-top:10px"
+    onclick="del('${table}','${id}',${after})">Delete</button>`;
+}
+
+/* HOME form */
+function homeForm(h){h=h||{};const id=h.id||"";
+  openSheet(`<h3>${id?"Edit home":"New home"}</h3>
+    <div class="field"><label>Name / lot</label><input id="f_name" value="${esc(h.name)}" placeholder="1203 NE Meadow Crossing"></div>
+    <div class="field"><label>Address</label><input id="f_addr" value="${esc(h.address)}" placeholder="Ankeny, IA"></div>
+    <div class="two">
+      <div class="field"><label>Plan</label><input id="f_plan" value="${esc(h.plan)}" placeholder="Azalea 6 Ranch"></div>
+      <div class="field"><label>Status</label><select id="f_status">
+        ${["Planning","Under construction","Punch list","Complete","Sold"].map(s=>`<option ${h.status===s?"selected":""}>${s}</option>`).join("")}
+      </select></div>
+    </div>
+    <button class="btn btn-gold" onclick="saveHome('${id}')">Save</button>
+    ${id?`<button class="btn" style="color:var(--red);background:#FBE7E4;margin-top:10px" onclick="del('homes','${id}',openHomes)">Delete home</button>`:""}`);
+}
+async function saveHome(id){
+  const name=val("f_name"); if(!name){toast("Name is required");return;}
+  const obj={name,address:val("f_addr"),plan:val("f_plan"),status:$("f_status").value};
+  let res=id?await sb.from("homes").update(obj).eq("id",id):await sb.from("homes").insert(obj);
+  if(res.error){toast(res.error.message);return;}
+  closeModal();toast("Saved");
+  if(state.home&&state.home.id===id){state.home={...state.home,...obj};setTop("Project",name,true);renderSection();}
+  else openHomes();
+}
+
+/* EXPENSE form */
+function expenseForm(e){e=e||{};const id=e.id||"";
+  openSheet(`<h3>${id?"Edit expense":"Add expense"}</h3>
+    <div class="field"><label>Description</label><input id="f_desc" value="${esc(e.description)}" placeholder="Lumber package"></div>
+    <div class="two">
+      <div class="field"><label>Amount</label><input id="f_amt" type="number" inputmode="decimal" value="${e.amount??""}" placeholder="0.00"></div>
+      <div class="field"><label>Date</label><input id="f_date" type="date" value="${e.expense_date||""}"></div>
+    </div>
+    <div class="two">
+      <div class="field"><label>Category</label><input id="f_cat" value="${esc(e.category)}" placeholder="Framing"></div>
+      <div class="field"><label>Status</label><select id="f_paid">
+        <option value="false" ${!e.paid?"selected":""}>Unpaid</option>
+        <option value="true" ${e.paid?"selected":""}>Paid</option></select></div>
+    </div>
+    <button class="btn btn-gold" onclick="saveExpense('${id}')">Save</button>
+    ${id?`<button class="btn" style="color:var(--red);background:#FBE7E4;margin-top:10px" onclick="del('expenses','${id}',renderExpenses)">Delete</button>`:""}`);
+}
+function saveExpense(id){
+  const description=val("f_desc"); if(!description){toast("Description required");return;}
+  save("expenses",id,{description,amount:parseFloat(val("f_amt"))||0,expense_date:$("f_date").value||null,
+    category:val("f_cat")||null,paid:$("f_paid").value==="true"},renderExpenses);
+}
+
+/* CONTRACTOR form */
+function contractorForm(c){c=c||{};const id=c.id||"";
+  openSheet(`<h3>${id?"Edit contractor":"Add contractor"}</h3>
+    <div class="field"><label>Name / company</label><input id="f_cname" value="${esc(c.name)}"></div>
+    <div class="field"><label>Trade</label><input id="f_trade" value="${esc(c.trade)}" placeholder="Electrical"></div>
+    <div class="two">
+      <div class="field"><label>Phone</label><input id="f_phone" type="tel" value="${esc(c.phone)}"></div>
+      <div class="field"><label>Email</label><input id="f_cemail" type="email" value="${esc(c.email)}"></div>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="f_notes">${esc(c.notes)}</textarea></div>
+    <button class="btn btn-gold" onclick="saveContractor('${id}')">Save</button>
+    ${id?`<button class="btn" style="color:var(--red);background:#FBE7E4;margin-top:10px" onclick="del('contractors','${id}',renderContractors)">Delete</button>`:""}`);
+}
+function saveContractor(id){
+  const name=val("f_cname"); if(!name){toast("Name required");return;}
+  save("contractors",id,{name,trade:val("f_trade")||null,phone:val("f_phone")||null,
+    email:val("f_cemail")||null,notes:val("f_notes")||null},renderContractors);
+}
+
+/* SCHEDULE form */
+function scheduleForm(s){s=s||{};const id=s.id||"";
+  openSheet(`<h3>${id?"Edit schedule":"Add to schedule"}</h3>
+    <div class="field"><label>Task</label><input id="f_task" value="${esc(s.task)}" placeholder="Rough-in plumbing"></div>
+    <div class="two">
+      <div class="field"><label>Contractor</label><input id="f_who" value="${esc(s.contractor_name)}"></div>
+      <div class="field"><label>Date</label><input id="f_sdate" type="date" value="${s.scheduled_date||""}"></div>
+    </div>
+    <div class="field"><label>Status</label><select id="f_sstatus">
+      ${["Scheduled","In progress","Done"].map(x=>`<option ${s.status===x?"selected":""}>${x}</option>`).join("")}</select></div>
+    <button class="btn btn-gold" onclick="saveSchedule('${id}')">Save</button>
+    ${id?`<button class="btn" style="color:var(--red);background:#FBE7E4;margin-top:10px" onclick="del('schedule','${id}',renderSchedule)">Delete</button>`:""}`);
+}
+function saveSchedule(id){
+  const task=val("f_task"); if(!task){toast("Task required");return;}
+  save("schedule",id,{task,contractor_name:val("f_who")||null,scheduled_date:$("f_sdate").value||null,
+    status:$("f_sstatus").value},renderSchedule);
+}
+
+/* INVOICE form */
+function invoiceForm(i){i=i||{};const id=i.id||"";
+  openSheet(`<h3>${id?"Edit invoice":"Add invoice"}</h3>
+    <div class="field"><label>Contractor / vendor</label><input id="f_ivendor" value="${esc(i.contractor_name)}"></div>
+    <div class="two">
+      <div class="field"><label>Amount</label><input id="f_iamt" type="number" inputmode="decimal" value="${i.amount??""}"></div>
+      <div class="field"><label>Invoice #</label><input id="f_inum" value="${esc(i.invoice_number)}"></div>
+    </div>
+    <div class="two">
+      <div class="field"><label>Due date</label><input id="f_idue" type="date" value="${i.due_date||""}"></div>
+      <div class="field"><label>Status</label><select id="f_ipaid">
+        <option value="false" ${!i.paid?"selected":""}>Unpaid</option>
+        <option value="true" ${i.paid?"selected":""}>Paid</option></select></div>
+    </div>
+    <button class="btn btn-gold" onclick="saveInvoice('${id}')">Save</button>
+    ${id?`<button class="btn" style="color:var(--red);background:#FBE7E4;margin-top:10px" onclick="del('invoices','${id}',renderInvoices)">Delete</button>`:""}`);
+}
+function saveInvoice(id){
+  const paid=$("f_ipaid").value==="true";
+  save("invoices",id,{contractor_name:val("f_ivendor")||null,amount:parseFloat(val("f_iamt"))||0,
+    invoice_number:val("f_inum")||null,due_date:$("f_idue").value||null,paid,
+    paid_date:paid?(new Date().toISOString().slice(0,10)):null},renderInvoices);
+}
+
+/* PHOTO tag sheet */
+let chosenTag="Needs Fixed";
+function photoTagSheet(){
+  chosenTag="Needs Fixed";
+  openSheet(`<h3>Tag this photo</h3>
+    <div class="field"><label>Tag</label><div class="tagrow" id="tagrow">
+      ${TAGS.map(([t,c])=>`<button class="tagopt ${t===chosenTag?'on':''}" data-c="${c}" data-t="${t}">${t}</button>`).join("")}
+    </div></div>
+    <div class="field"><label>Note (optional)</label><textarea id="f_pnote" placeholder="e.g. drywall crack, master bath"></textarea></div>
+    <button class="btn btn-gold" onclick="uploadPhoto(chosenTag, val('f_pnote'))">Save photo</button>
+    <button class="btn btn-ghost" onclick="pendingFile=null;closeModal()">Cancel</button>`);
+  document.querySelectorAll("#tagrow .tagopt").forEach(b=>b.onclick=()=>{
+    chosenTag=b.dataset.t;
+    document.querySelectorAll("#tagrow .tagopt").forEach(x=>x.classList.toggle("on",x===b));
+  });
+}
+
+function emptyBox(ic,t,s){return `<div class="empty"><div class="ic">${ic}</div><p>${t}</p><span>${s}</span></div>`;}
+
+/* PWA service worker */
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{});}
+</script>
+</body>
+</html>
