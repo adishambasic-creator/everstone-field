@@ -388,7 +388,8 @@ async function renderOverview(){
   const upcoming=sch.filter(s=>s.status!=="Done").length;
   const h=state.home;
   const loan=Number(h.loan_amount||0);
-  const drawn=inv.filter(i=>i.paid).reduce((a,i)=>a+Number(i.amount||0),0);
+  const drawn=inv.filter(i=>i.paid).reduce((a,i)=>a+Number(i.amount||0),0)
+             +exp.filter(e=>e.paid).reduce((a,e)=>a+Number(e.amount||0),0);
   const loanPct=loan>0?Math.round(drawn/loan*100):0;
   $("content").innerHTML=`
     <div class="card" style="margin-bottom:18px">
@@ -414,8 +415,10 @@ async function renderOverview(){
 /* ---------- LOAN ---------- */
 async function renderLoan(){
   loading();
-  const inv=await getRows("invoices");
-  const drawn=inv.filter(i=>i.paid).reduce((a,i)=>a+Number(i.amount||0),0);
+  const [inv,exp]=await Promise.all([getRows("invoices"),getRows("expenses")]);
+  const drawnInv=inv.filter(i=>i.paid).reduce((a,i)=>a+Number(i.amount||0),0);
+  const drawnExp=exp.filter(e=>e.paid).reduce((a,e)=>a+Number(e.amount||0),0);
+  const drawn=drawnInv+drawnExp;
   const loan=Number(state.home.loan_amount||0);
   const pct=loan>0?drawn/loan:0;
   const shown=Math.max(0,Math.min(pct,1));
@@ -425,7 +428,7 @@ async function renderLoan(){
   const ringColor=over?"var(--red)":pct>=0.85?"var(--amber)":"var(--gold)";
   let html=`<div class="sec-h"><h2>Construction Loan</h2><button class="add" onclick="loanForm()">${loan>0?"Edit amount":"Set amount"}</button></div>`;
   if(loan<=0){
-    html+=emptyBox("bank","No loan amount set","Add your construction loan amount and the gauge fills as invoices are paid.");
+    html+=emptyBox("bank","No loan amount set","Add your construction loan amount and the gauge fills as invoices and expenses are paid.");
     $("content").innerHTML=html; return;
   }
   html+=`
@@ -443,11 +446,13 @@ async function renderLoan(){
     <div class="summary">
       <div class="stat"><div class="lbl">Loan amount</div><div class="num sm">${money(loan)}</div></div>
       <div class="stat"><div class="lbl">Drawn so far</div><div class="num sm">${money(drawn)}</div></div>
+      <div class="stat"><div class="lbl">From paid invoices</div><div class="num sm">${money(drawnInv)}</div></div>
+      <div class="stat"><div class="lbl">From paid expenses</div><div class="num sm">${money(drawnExp)}</div></div>
       <div class="stat" style="grid-column:1/-1"><div class="lbl">Remaining on loan</div>
         <div class="num" style="color:${remaining<0?"var(--red)":"var(--green)"}">${money(remaining)}</div></div>
     </div>
     <p style="color:var(--muted);font-size:13px;text-align:center;margin-top:2px">
-      The gauge counts invoices marked paid. Mark more invoices paid in the Invoices tab and it updates here.</p>`;
+      Drawn counts every invoice and expense marked paid. To avoid double counting, log each cost once &mdash; as an expense or an invoice, not both.</p>`;
   $("content").innerHTML=html;
   requestAnimationFrame(()=>{const f=$("ringFill");if(f)f.setAttribute("stroke-dashoffset",offset.toFixed(1));});
 }
@@ -645,7 +650,7 @@ async function saveHome(id){
 }
 
 /* EXPENSE form */
-function expenseForm(e){e=e||{};const id=e.id||"";
+function expenseForm(e){e=e||{};const id=e.id||"";const paidSel=id?e.paid:true;
   openSheet(`<h3>${id?"Edit expense":"Add expense"}</h3>
     <div class="field"><label>Description</label><input id="f_desc" value="${esc(e.description)}" placeholder="Lumber package"></div>
     <div class="two">
@@ -655,8 +660,8 @@ function expenseForm(e){e=e||{};const id=e.id||"";
     <div class="two">
       <div class="field"><label>Category</label><input id="f_cat" value="${esc(e.category)}" placeholder="Framing"></div>
       <div class="field"><label>Status</label><select id="f_paid">
-        <option value="false" ${!e.paid?"selected":""}>Unpaid</option>
-        <option value="true" ${e.paid?"selected":""}>Paid</option></select></div>
+        <option value="true" ${paidSel?"selected":""}>Paid</option>
+        <option value="false" ${!paidSel?"selected":""}>Unpaid</option></select></div>
     </div>
     <button class="btn btn-gold" onclick="saveExpense('${id}')">Save</button>
     ${id?`<button class="btn" style="color:var(--red);background:#FBE7E4;margin-top:10px" onclick="del('expenses','${id}',renderExpenses)">Delete</button>`:""}`);
