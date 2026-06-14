@@ -163,6 +163,15 @@
     transition:background .15s,border-color .15s}
   .check.on{background:var(--green);border-color:var(--green)}
 
+  .insp-actions{display:flex;gap:9px;margin-top:13px}
+  .ins-btn{flex:1;padding:10px;border-radius:12px;font-size:13.5px;font-weight:650;
+    border:1.5px solid var(--line);background:var(--card);color:var(--text2);
+    display:flex;align-items:center;justify-content:center;gap:6px;transition:.12s}
+  .ins-btn svg{width:16px;height:16px}
+  .ins-btn:active{transform:scale(.97)}
+  .ins-btn.pass.on{background:var(--green);border-color:var(--green);color:#fff}
+  .ins-btn.fail.on{background:var(--red);border-color:var(--red);color:#fff}
+
   /* ---------- MODAL ---------- */
   .scrim{position:fixed;inset:0;background:rgba(20,16,11,.42);z-index:90;display:flex;
     align-items:flex-end;justify-content:center;backdrop-filter:blur(3px);animation:fade .2s}
@@ -254,7 +263,7 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-const SECTIONS = ["Overview","Loan","Expenses","Contractors","Schedule","Photos","Invoices"];
+const SECTIONS = ["Overview","Loan","Expenses","Contractors","Schedule","Inspections","Photos","Invoices"];
 let state = { user:null, home:null, section:"Overview" };
 
 const $ = id => document.getElementById(id);
@@ -267,7 +276,10 @@ const ICONS={
   calendar:'<rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   camera:'<path d="M4 8h2.6L8 6h8l1.4 2H20a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.3"/>',
   invoice:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6"/>',
-  chev:'<path d="m9 6 6 6-6 6"/>'
+  chev:'<path d="m9 6 6 6-6 6"/>',
+  clipboard:'<rect x="5" y="5" width="14" height="16" rx="2.5"/><rect x="9" y="3" width="6" height="4" rx="1.3"/><path d="M9 12h6M9 16h6"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>'
 };
 function ic(name,size,sw){size=size||24;sw=sw||1.8;return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||""}</svg>`;}
 const esc = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -371,6 +383,7 @@ function renderSection(){
   if(s==="Expenses")    return renderExpenses();
   if(s==="Contractors") return renderContractors();
   if(s==="Schedule")    return renderSchedule();
+  if(s==="Inspections") return renderInspections();
   if(s==="Photos")      return renderPhotos();
   if(s==="Invoices")    return renderInvoices();
 }
@@ -378,14 +391,16 @@ function renderSection(){
 /* ---------- OVERVIEW ---------- */
 async function renderOverview(){
   loading();
-  const [exp,inv,sch,pho,con]=await Promise.all([
-    getRows("expenses"),getRows("invoices"),getRows("schedule"),getRows("photos"),getRows("contractors")
+  const [exp,inv,sch,pho,con,insp]=await Promise.all([
+    getRows("expenses"),getRows("invoices"),getRows("schedule"),getRows("photos"),getRows("contractors"),getRows("inspections")
   ]);
   const spent=exp.reduce((a,e)=>a+Number(e.amount||0),0);
   const owed=inv.filter(i=>!i.paid).reduce((a,i)=>a+Number(i.amount||0),0);
   const unpaidCt=inv.filter(i=>!i.paid).length;
   const fixes=pho.filter(p=>p.tag==="Needs Fixed").length;
   const upcoming=sch.filter(s=>s.status!=="Done").length;
+  const inspFailed=insp.filter(i=>i.result==="Failed").length;
+  const inspPassed=insp.filter(i=>i.result==="Passed").length;
   const h=state.home;
   const loan=Number(h.loan_amount||0);
   const drawn=inv.filter(i=>i.paid).reduce((a,i)=>a+Number(i.amount||0),0)
@@ -406,6 +421,7 @@ async function renderOverview(){
       <div class="stat"><div class="lbl">Needs fixed</div><div class="num sm" style="color:${fixes>0?'var(--red)':'inherit'}">${fixes}</div></div>
       <div class="stat"><div class="lbl">Open schedule</div><div class="num sm">${upcoming}</div></div>
       <div class="stat"><div class="lbl">Contractors</div><div class="num sm">${con.length}</div></div>
+      ${insp.length?`<div class="stat"><div class="lbl">Inspections</div><div class="num sm">${inspPassed}/${insp.length} passed${inspFailed?` · <span style="color:var(--red)">${inspFailed} failed</span>`:""}</div></div>`:""}
       ${loan>0?`<div class="stat" style="grid-column:1/-1"><div class="lbl">Loan drawn</div><div class="num sm">${money(drawn)} of ${money(loan)} · <span style="color:${loanPct>=100?'var(--red)':loanPct>=85?'var(--amber)':'var(--gold-deep)'}">${loanPct}%</span></div></div>`:""}
     </div>
     <button class="btn btn-gold" style="max-width:none" onclick="state.section='Expenses';renderTabs();renderSection()">Jump to expenses</button>
@@ -524,6 +540,65 @@ async function renderSchedule(){
       <button class="iconbtn" onclick='scheduleForm(${j(s)})'>Edit</button>
     </div></div>`;}).join("");
   $("content").innerHTML=html;
+}
+
+/* ---------- INSPECTIONS ---------- */
+async function renderInspections(){
+  loading();
+  const rows=await getRows("inspections",q=>q.order("scheduled_date",{ascending:true,nullsFirst:false}));
+  const passed=rows.filter(r=>r.result==="Passed").length;
+  const failed=rows.filter(r=>r.result==="Failed").length;
+  let html=`<div class="sec-h"><h2>Inspections</h2><button class="add" onclick="inspectionForm()">${ic('plus',16)} Add</button></div>`;
+  if(rows.length){
+    html+=`<div class="summary" style="margin-bottom:14px">
+      <div class="stat"><div class="lbl">Passed</div><div class="num sm" style="color:var(--green)">${passed}</div></div>
+      <div class="stat"><div class="lbl">Failed</div><div class="num sm" style="color:${failed?'var(--red)':'inherit'}">${failed}</div></div></div>`;
+  }
+  if(!rows.length) html+=emptyBox("clipboard","No inspections yet","Schedule inspections and track pass or fail.");
+  else html+=rows.map(r=>{
+    const res=r.result||"Pending";
+    const cls=res==="Passed"?"green":res==="Failed"?"red":"slate";
+    return `<div class="card">
+      <div class="row1">
+        <div style="min-width:0"><div class="name">${esc(r.type)}</div>
+          <div class="sub">${r.inspector?esc(r.inspector)+" · ":""}${fdate(r.scheduled_date)||"No date set"}</div>
+          <div class="meta"><span class="pill ${cls}">${esc(res)}</span></div>
+          ${r.notes?`<div class="sub">${esc(r.notes)}</div>`:""}</div>
+        <button class="iconbtn" onclick='inspectionForm(${j(r)})'>Edit</button>
+      </div>
+      <div class="insp-actions">
+        <button class="ins-btn pass ${res==="Passed"?"on":""}" onclick="setInspResult('${r.id}','Passed','${res}')">${ic('check',16)} Pass</button>
+        <button class="ins-btn fail ${res==="Failed"?"on":""}" onclick="setInspResult('${r.id}','Failed','${res}')">${ic('x',16)} Fail</button>
+      </div></div>`;
+  }).join("");
+  $("content").innerHTML=html;
+}
+async function setInspResult(id,result,current){
+  const next=current===result?"Pending":result;
+  const {error}=await sb.from("inspections").update({result:next}).eq("id",id);
+  if(error)toast(error.message);
+  else{toast(next==="Passed"?"Marked passed":next==="Failed"?"Marked failed":"Reset to pending");renderInspections();}
+}
+function inspectionForm(r){r=r||{};const id=r.id||"";
+  const types=["Footing","Foundation","Underground plumbing","Rough plumbing","Rough electrical","Rough mechanical / HVAC","Framing","Insulation","Sewer & water service","Final building","Final electrical","Final plumbing","Final mechanical","Occupancy"];
+  openSheet(`<h3>${id?"Edit inspection":"Add inspection"}</h3>
+    <div class="field"><label>Inspection</label>
+      <input id="f_itype" list="insptypes" value="${esc(r.type)}" placeholder="Framing">
+      <datalist id="insptypes">${types.map(t=>`<option value="${t}"></option>`).join("")}</datalist></div>
+    <div class="two">
+      <div class="field"><label>Date</label><input id="f_idate" type="date" value="${r.scheduled_date||""}"></div>
+      <div class="field"><label>Result</label><select id="f_iresult">
+        ${["Pending","Passed","Failed"].map(x=>`<option ${(r.result||"Pending")===x?"selected":""}>${x}</option>`).join("")}</select></div>
+    </div>
+    <div class="field"><label>Inspector / jurisdiction</label><input id="f_iinsp" value="${esc(r.inspector)}" placeholder="City of Ankeny"></div>
+    <div class="field"><label>Notes</label><textarea id="f_inotes" placeholder="e.g. failed — add joist hangers at beam">${esc(r.notes)}</textarea></div>
+    <button class="btn btn-gold" onclick="saveInspection('${id}')">Save</button>
+    ${id?`<button class="btn" style="color:var(--red);background:#FBE7E4;margin-top:10px" onclick="del('inspections','${id}',renderInspections)">Delete</button>`:""}`);
+}
+function saveInspection(id){
+  const type=val("f_itype"); if(!type){toast("Inspection type required");return;}
+  save("inspections",id,{type,scheduled_date:$("f_idate").value||null,result:$("f_iresult").value,
+    inspector:val("f_iinsp")||null,notes:val("f_inotes")||null},renderInspections);
 }
 
 /* ---------- INVOICES ---------- */
